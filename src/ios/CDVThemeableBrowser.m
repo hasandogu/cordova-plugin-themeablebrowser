@@ -838,7 +838,7 @@
 {
     UIImage* result = nil;
     if (name) {
-        result = [UIImage imageNamed:name];
+        result = [UIImage imageNamed:[NSString stringWithFormat:@"CDVThemeableBrowser.bundle/%@", name]];
     } else if (altPath) {
         NSString* path = [[[NSBundle mainBundle] bundlePath]
                           stringByAppendingPathComponent:[NSString pathWithComponents:@[@"www", altPath]]];
