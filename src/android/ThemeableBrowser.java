@@ -29,6 +29,7 @@ import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.StateListDrawable;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -705,21 +706,44 @@ public class ThemeableBrowser extends CordovaPlugin {
                 // Title
                 final TextView title = features.title != null
                         ? new TextView(cordova.getActivity()) : null;
+                final TextView subtitle = features.title != null
+                        ? new TextView(cordova.getActivity()) : null;
                 if (title != null) {
                     FrameLayout.LayoutParams titleParams
                             = new FrameLayout.LayoutParams(
-                            LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+                            LayoutParams.MATCH_PARENT, LayoutParams.FILL_PARENT);
                     titleParams.gravity = Gravity.CENTER;
                     title.setLayoutParams(titleParams);
                     title.setSingleLine();
                     title.setEllipsize(TextUtils.TruncateAt.END);
-                    title.setGravity(Gravity.CENTER);
+                    title.setGravity(Gravity.CENTER | Gravity.TOP);
                     title.setTextColor(hexStringToColor(
                             features.title.color != null
                                     ? features.title.color : "#000000ff"));
+					title.setTypeface(title.getTypeface(), Typeface.BOLD);
+					title.setTextSize(TypedValue.COMPLEX_UNIT_PT,8);
+					
+                    FrameLayout.LayoutParams subtitleParams
+                            = new FrameLayout.LayoutParams(
+                            LayoutParams.MATCH_PARENT, LayoutParams.FILL_PARENT);
+                    titleParams.gravity = Gravity.CENTER;
+                    subtitle.setLayoutParams(subtitleParams);
+                    subtitle.setSingleLine();
+                    subtitle.setEllipsize(TextUtils.TruncateAt.END);
+                    subtitle.setGravity(Gravity.CENTER | Gravity.BOTTOM);
+                    subtitle.setTextColor(hexStringToColor(
+                            features.title.subColor != null
+                                    ? features.title.subColor : "#000000ff"));
+					subtitle.setTextSize(TypedValue.COMPLEX_UNIT_PT,6);
+                    subtitle.setVisibility(View.GONE);
+					
                     if (features.title.staticText != null) {
+						title.setGravity(Gravity.CENTER);
                         title.setText(features.title.staticText);
                     }
+					else {
+						subtitle.setVisibility(View.VISIBLE);
+					}
                 }
 
                 // WebView
@@ -733,6 +757,19 @@ public class ThemeableBrowser extends CordovaPlugin {
                 inAppWebView.setLayoutParams(inAppWebViewParams);
                 inAppWebView.setWebChromeClient(new InAppChromeClient(thatWebView));
                 WebViewClient client = new ThemeableBrowserClient(thatWebView, new PageLoadListener() {
+				
+                    @Override
+                    public void onPageStarted(String url) {
+                        if (inAppWebView != null
+                                && title != null && features.title != null
+                                && features.title.staticText == null
+                                && features.title.showPageTitle
+								&& features.title.loadingText != null) {
+                            title.setText(features.title.loadingText);
+							subtitle.setText(url);
+                        }
+					}
+					
                     @Override
                     public void onPageFinished(String url, boolean canGoBack, boolean canGoForward) {
                         if (inAppWebView != null
@@ -740,6 +777,7 @@ public class ThemeableBrowser extends CordovaPlugin {
                                 && features.title.staticText == null
                                 && features.title.showPageTitle) {
                             title.setText(inAppWebView.getTitle());
+							subtitle.setText(inAppWebView.getUrl());
                         }
 
                         if (back != null) {
@@ -879,17 +917,27 @@ public class ThemeableBrowser extends CordovaPlugin {
                 // Don't show address bar.
                 // toolbar.addView(edittext);
                 toolbar.addView(rightButtonContainer);
-
+				
                 if (title != null) {
                     int titleMargin = Math.max(
                             leftContainerWidth, rightContainerWidth);
 
                     FrameLayout.LayoutParams titleParams
                             = (FrameLayout.LayoutParams) title.getLayoutParams();
-                    titleParams.setMargins(titleMargin, 0, titleMargin, 0);
+                    titleParams.setMargins(titleMargin, 8, titleMargin, 0);
                     toolbar.addView(title);
                 }
 
+                if (subtitle != null) {
+                    int subtitleMargin = Math.max(
+                            leftContainerWidth, rightContainerWidth);
+
+                    FrameLayout.LayoutParams subtitleParams
+                            = (FrameLayout.LayoutParams) subtitle.getLayoutParams();
+                    subtitleParams.setMargins(subtitleMargin, 0, subtitleMargin, 8);
+                    toolbar.addView(subtitle);
+                }
+				
                 if (features.fullscreen) {
                     // If full screen mode, we have to add inAppWebView before adding toolbar.
                     main.addView(inAppWebView);
@@ -1154,6 +1202,7 @@ public class ThemeableBrowser extends CordovaPlugin {
     }
 
     public static interface PageLoadListener {
+        public void onPageStarted(String url);
         public void onPageFinished(String url, boolean canGoBack,
                 boolean canGoForward);
     }
@@ -1258,6 +1307,10 @@ public class ThemeableBrowser extends CordovaPlugin {
                 obj.put("url", newloc);
 
                 sendUpdate(obj, true);
+
+                if (this.callback != null) {
+                    this.callback.onPageStarted(url);
+                }
             } catch (JSONException ex) {
             }
         }
@@ -1399,7 +1452,9 @@ public class ThemeableBrowser extends CordovaPlugin {
 
     private static class Title {
         public String color;
+        public String subColor;
         public String staticText;
+        public String loadingText;
         public boolean showPageTitle;
     }
 }

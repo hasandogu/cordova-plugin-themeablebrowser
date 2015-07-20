@@ -34,6 +34,7 @@
 #define    kThemeableBrowserPropEvent @"event"
 #define    kThemeableBrowserPropLabel @"label"
 #define    kThemeableBrowserPropColor @"color"
+#define    kThemeableBrowserPropSubColor @"subColor"
 #define    kThemeableBrowserPropHeight @"height"
 #define    kThemeableBrowserPropImage @"image"
 #define    kThemeableBrowserPropWwwImage @"wwwImage"
@@ -41,6 +42,7 @@
 #define    kThemeableBrowserPropWwwImagePressed @"wwwImagePressed"
 #define    kThemeableBrowserPropWwwImageDensity @"wwwImageDensity"
 #define    kThemeableBrowserPropStaticText @"staticText"
+#define    kThemeableBrowserPropLoadingText @"loadingText"
 #define    kThemeableBrowserPropShowPageTitle @"showPageTitle"
 #define    kThemeableBrowserPropAlign @"align"
 #define    kThemeableBrowserPropTitle @"title"
@@ -803,18 +805,33 @@
     // The correct positioning of title is not that important right now, since
     // rePositionViews will take care of it a bit later.
     self.titleLabel = nil;
+    self.urlLabel = nil;
     if (_browserOptions.title) {
-        self.titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, 0, 10, toolbarHeight)];
+		self.titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, 0, 10, toolbarHeight)];
         self.titleLabel.textAlignment = NSTextAlignmentCenter;
         self.titleLabel.numberOfLines = 1;
         self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         self.titleLabel.textColor = [CDVThemeableBrowserViewController colorFromRGBA:[self getStringFromDict:_browserOptions.title withKey:kThemeableBrowserPropColor withDefault:@"#000000ff"]];
+		self.titleLabel.font = [UIFont boldSystemFontOfSize:16];
+		
+		self.urlLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, toolbarHeight / 2.0f, 10, toolbarHeight / 2.0f)];
+        self.urlLabel.textAlignment = NSTextAlignmentCenter;
+        self.urlLabel.numberOfLines = 1;
+        self.urlLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        self.urlLabel.textColor = [CDVThemeableBrowserViewController colorFromRGBA:[self getStringFromDict:_browserOptions.title withKey:kThemeableBrowserPropSubColor withDefault:@"#000000ff"]];
+        self.urlLabel.hidden = YES;
+		self.urlLabel.font = [UIFont systemFontOfSize:12];
         
         if (_browserOptions.title[kThemeableBrowserPropStaticText]) {
             self.titleLabel.text = _browserOptions.title[kThemeableBrowserPropStaticText];
         }
+		else {
+			self.titleLabel.frame = CGRectMake(10, 0, 10, toolbarHeight / 2.0f);
+			self.urlLabel.hidden = NO;
+		}
         
         [self.toolbar addSubview:self.titleLabel];
+        [self.toolbar addSubview:self.urlLabel];
     }
 
     self.view.backgroundColor = [CDVThemeableBrowserViewController colorFromRGBA:[self getStringFromDict:_browserOptions.statusbar withKey:kThemeableBrowserPropColor withDefault:@"#ffffffff"]];
@@ -1277,7 +1294,13 @@
     CGFloat screenWidth = CGRectGetWidth(self.view.frame);
     NSInteger width = floorf(screenWidth - self.titleOffset * 2.0f);
     if (self.titleLabel) {
-        self.titleLabel.frame = CGRectMake(floorf((screenWidth - width) / 2.0f), 0, width, toolbarHeight);
+        if (_browserOptions.title[kThemeableBrowserPropStaticText]) {
+			self.titleLabel.frame = CGRectMake(floorf((screenWidth - width) / 2.0f), 0, width, toolbarHeight);
+		}
+		else {
+			self.titleLabel.frame = CGRectMake(floorf((screenWidth - width) / 2.0f), 0, width, toolbarHeight / 2.0f);
+			self.urlLabel.frame = CGRectMake(floorf((screenWidth - width) / 2.0f), toolbarHeight / 2.0f, width, toolbarHeight / 2.0f);
+		}
     }
     
     [self layoutButtons];
@@ -1347,6 +1370,16 @@
     // loading url, start spinner
 
     self.addressLabel.text = NSLocalizedString(@"Loading...", nil);
+	
+    if (self.titleLabel && self.urlLabel && _browserOptions.title
+            && !_browserOptions.title[kThemeableBrowserPropStaticText]
+			&& _browserOptions.title[kThemeableBrowserPropLoadingText]
+            && [self getBoolFromDict:_browserOptions.title withKey:kThemeableBrowserPropShowPageTitle]) {
+        // Update title text to page title when title is shown and we are not
+        // required to show a static text.
+        self.titleLabel.text = _browserOptions.title[kThemeableBrowserPropLoadingText];
+        self.urlLabel.text = [self.currentURL absoluteString];
+    }
 
     [self.spinner startAnimating];
 
@@ -1373,12 +1406,13 @@
     self.addressLabel.text = [self.currentURL absoluteString];
     [self updateButton:theWebView];
     
-    if (self.titleLabel && _browserOptions.title
+    if (self.titleLabel && self.urlLabel && _browserOptions.title
             && !_browserOptions.title[kThemeableBrowserPropStaticText]
             && [self getBoolFromDict:_browserOptions.title withKey:kThemeableBrowserPropShowPageTitle]) {
         // Update title text to page title when title is shown and we are not
         // required to show a static text.
         self.titleLabel.text = [self.webView stringByEvaluatingJavaScriptFromString:@"document.title"];
+        self.urlLabel.text = [self.currentURL absoluteString];
     }
 
     [self.spinner stopAnimating];
