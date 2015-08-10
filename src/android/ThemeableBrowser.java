@@ -622,7 +622,7 @@ public class ThemeableBrowser extends CordovaPlugin {
                     "back button",
                     new View.OnClickListener() {
                         public void onClick(View v) {
-                            if (features.backButtonCanClose && canGoBack()) {
+                            if (features.backButtonCanClose && !canGoBack()) {
                                 closeDialog();
                             } else {
                                 goBack();
@@ -646,8 +646,8 @@ public class ThemeableBrowser extends CordovaPlugin {
                     }
                 );
 
-                if (back != null) {
-                    back.setEnabled(false);
+                if (forward != null) {
+                    forward.setEnabled(false);
                 }
 
 
